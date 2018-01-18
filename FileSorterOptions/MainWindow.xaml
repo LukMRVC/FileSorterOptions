@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileSorterOptions"
         mc:Ignorable="d"
-        Title="Nastavení" Height="350" Width="588.636" Loaded="Window_Loaded">
+        Title="Nastavení" Height="350" Width="600" Loaded="Window_Loaded" Closing="Window_Closing">
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="20px"/>
             <RowDefinition Height="1*"/>
             <RowDefinition Height="3*"/>
         </Grid.RowDefinitions>
@@ -17,13 +18,20 @@
             <ColumnDefinition Width="1*"/>
             <ColumnDefinition Width="1*"/>
         </Grid.ColumnDefinitions>
-        <Button Grid.Column="0" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="109" Height="30" Click="Button_Click">
-            Přidat umístění
-        </Button>
-        <Button Content="Odstranit umístění" Grid.Column="1" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="0.202,-0.288" Height="30" Click="Button_Click_1"/>
-        <Button Content="Spustit" Grid.Column="2" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="0.202,-0.288" Height="30" Click="Button_Click_2"/>
-        <Button Content="Spustit službu" Grid.Column="3" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="0.202,-0.288" Height="30" Click="Button_Click_3"/>
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" Grid.Row="1" Grid.ColumnSpan="4">
+        <ProgressBar x:Name="prgBar" Grid.Row="0" Grid.ColumnSpan="4" Minimum="0" Cursor="Wait">
+
+        </ProgressBar>
+        <StackPanel Orientation="Horizontal" Grid.ColumnSpan="4" Grid.Row="1">
+            <Button Grid.Column="0" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="109" Height="30" Click="Button_Click">
+                Přidat umístění
+            </Button>
+            <Button Content="Odstranit umístění" Grid.Column="1" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="0.202,-0.288" Height="30" Click="Button_Click_1"/>
+            <Button Content="Spustit" Grid.Column="2" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="0.202,-0.288" Height="30" Click="Button_Click_2"/>
+            <Button Content="Spustit službu" Grid.Column="3" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="0.202,-0.288" Height="30" Click="Button_Click_3"/>
+            <CheckBox x:Name="subdirectoriesBox" Margin="5, 15, 0, 0" Content="Subdirectories" />
+        </StackPanel>
+        
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" Grid.Row="2" Grid.ColumnSpan="4">
             <Grid Grid.ColumnSpan="4" Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1*"/>
@@ -40,7 +48,7 @@
                     <Button x:Name="Button1" VerticalAlignment="Top" Padding="10, 2" Margin="0, 10, 0, 0" HorizontalContentAlignment="Center" MinWidth="50" VerticalContentAlignment="Center" Click="Browse_Click">Browse</Button>
                 </StackPanel>
                 <StackPanel x:Name="SelectPanel" Grid.Column="2" HorizontalAlignment="Stretch" Orientation="Vertical" VerticalAlignment="Stretch">
-                    <ComboBox x:Name="ComboBox1" HorizontalAlignment="Center" MinHeight="20" Margin="0,10,0,0" VerticalAlignment="Top" Width="100" PreviewMouseLeftButtonDown="ComboBox_Clicked"/>
+                    <ComboBox x:Name="ComboBox1" HorizontalAlignment="Center" MinHeight="20" Margin="0,10,0,0" VerticalAlignment="Top" Width="100" PreviewMouseLeftButtonDown="ComboBox_Clicked" DropDownClosed="ComboBox_DropDownClosed"/>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

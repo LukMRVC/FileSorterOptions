@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Linq;
 using System.Windows;
+using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.Win32;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.ComponentModel;
 using WPFFolderBrowser;
+using Newtonsoft.Json;
+using Microsoft.Win32;
 
 namespace FileSorterOptions
 {
@@ -19,7 +23,7 @@ namespace FileSorterOptions
         private Dictionary<string, Button> browseButtons;
         private Dictionary<string, ComboBox> comboBoxes;
         private bool deleteMode = false;
-       
+        
 
 
         public MainWindow()
@@ -55,7 +59,9 @@ namespace FileSorterOptions
             {
                 ["Button1"] = (Button)FindName("Button1")
             };
-            this.fileTypes = GetSystemFileTypes();
+
+            LoadFileTypes();
+            
             ComboBoxItem item;
             //File type (extension)
             foreach (string type in fileTypes) {
@@ -65,7 +71,41 @@ namespace FileSorterOptions
                 };
                 this.ComboBox1.Items.Add(item);
             }
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.Destinations)) {
+                FillWithSavedData();
+            }
         }
+
+        private void LoadFileTypes()
+        {
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.SystemFileTypes))
+            {
+                fileTypes = JsonConvert.DeserializeObject<string[]>(Properties.Settings.Default.SystemFileTypes);
+            }
+            else
+            {
+                this.fileTypes = GetSystemFileTypes();
+                Properties.Settings.Default.SystemFileTypes = JsonConvert.SerializeObject(this.fileTypes);
+                Properties.Settings.Default.Save();
+            }
+        }
+
+
+        private void FillWithSavedData()
+        {
+            //extension = key, destination folder = value
+            var values = JsonConvert.DeserializeObject<Dictionary<string, string>>(Properties.Settings.Default.Destinations);
+            int i = 1;
+            foreach (string key in values.Keys)
+            {
+                this.textBoxes["TextBox" + i].Text = values[key];
+                this.comboBoxes["ComboBox" + i].Text = key;
+                AddRow();
+                ++i;
+            }
+
+        }
+
 
         private string[] GetSystemFileTypes() {
             var keys = Registry.ClassesRoot.GetSubKeyNames();
@@ -82,6 +122,10 @@ namespace FileSorterOptions
         //Add destination directory
         private void Button_Click(object sender, RoutedEventArgs e)
         {
+            AddRow();
+        }
+
+        private void AddRow() {
             //number used for naming purposes, doest matter if taken from any of stack panels children count
             int number = (ButtonPanel.Children.Count + 1);
             AddTextBox(number);
@@ -152,14 +196,24 @@ namespace FileSorterOptions
                 Name = "ComboBox" + num
             };
             comboBox.PreviewMouseLeftButtonDown += ComboBox_Clicked;
+            comboBox.DropDownClosed += ComboBox_DropDownClosed;
             SelectPanel.Children.Add(comboBox);
             comboBoxes["ComboBox" + num] = comboBox;
         }
 
 
-
-        //<TextBox x:Name="DirectoryInput" Margin="10, 10, 0, 0" HorizontalScrollBarVisibility="Auto" IsReadOnly="True" TextWrapping="NoWrap" VerticalAlignment="Top" MinWidth="180" MaxLines="1" FontSize="18.333" HorizontalContentAlignment="Left" HorizontalAlignment="Left" Background="#FFDEDEDE" />
-
+        //extension, destination folder
+        private Dictionary<string, string> GetArgs() {
+            var args = new Dictionary<string, string>();
+            for(int i = 1; i <= textBoxes.Count; ++i)
+            {
+                //If destinatoin folder text and selected extension are not null
+                if (!string.IsNullOrEmpty(textBoxes["TextBox" + i].Text) && !string.IsNullOrEmpty(comboBoxes["ComboBox" + i].Text))
+                    args[comboBoxes["ComboBox" + i].Text] = textBoxes["TextBox" + i].Text;
+            }
+            return args;
+        }
+        
 
         //Remove destination directory
         private void Button_Click_1(object sender, RoutedEventArgs e)
@@ -169,7 +223,7 @@ namespace FileSorterOptions
         }
 
         //Start sorting
-        private void Button_Click_2(object sender, RoutedEventArgs e)
+        private async void Button_Click_2(object sender, RoutedEventArgs e)
         {
             var locations = new Dictionary<string, string>();
             string extension = null;
@@ -181,16 +235,27 @@ namespace FileSorterOptions
                     continue;
                 locations[extension] = text;
             }
-            if (locations.Count != 0) { 
-                Mover mover = new Mover(locations);
-                mover.Move();
+            if (locations.Count != 0)
+            {
+                var progress = new Progress<int>(value => prgBar.Value = value);
+                Mover mover;
+                if ((bool)this.subdirectoriesBox.IsChecked)
+                    mover = new Mover(locations, System.IO.SearchOption.AllDirectories);
+                else
+                    mover = new Mover(locations, System.IO.SearchOption.TopDirectoryOnly);
+                await Task.Run(() => mover.Move(progress));
+                MessageBox.Show("File moved successfully", "Operation completed", MessageBoxButton.OK, MessageBoxImage.Information);
+
+
             }
         }
 
         //Start sorting service
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
-
+            System.ServiceProcess.ServiceController serviceController = new System.ServiceProcess.ServiceController("FileSorterService");
+            //args go here, I have to make these arguments
+            serviceController.Start();
         }
 
         private void TextBox_Clicked(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -203,6 +268,31 @@ namespace FileSorterOptions
         {
             if (deleteMode)
                 DeleteRow(Int32.Parse((sender as ComboBox).Name.Substring(8, (sender as ComboBox).Name.Length - 8)));
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            //My key
+            Properties.Settings.Default.Destinations = JsonConvert.SerializeObject(GetArgs(), Formatting.Indented);
+            Properties.Settings.Default.Save();
+        }
+
+        //Calls upon combobox selection change, so that what user selected wasnt selected before
+        private void ComboBox_DropDownClosed(object sender, EventArgs e)
+        {
+            if ((sender as ComboBox).Name.Contains('1'))
+            {
+                return;
+            }
+            string newVal = (sender as ComboBox).Text;
+            for (int i = 1; i <= (comboBoxes.Count - 1); ++i)
+            {
+                if (comboBoxes["ComboBox" + i].Text == newVal)
+                {
+                    MessageBox.Show("This has already been selected", "Invalid option", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    (sender as ComboBox).Text = null;
+                }
+            }
         }
     }
 }
