@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.ComponentModel;
+using System.Security.Permissions;
 using WPFFolderBrowser;
 using Newtonsoft.Json;
 using Microsoft.Win32;
@@ -250,12 +250,27 @@ namespace FileSorterOptions
             }
         }
 
+        //Args are path and extension
+        private string[] ConvertArgsToServiceStringArray(Dictionary<string, string> args)
+        {
+            List<string> values = new List<string>();
+            //key is extension, value is destinationFOlders
+            foreach (string key in args.Keys) {
+                values.Add(args[key]);
+                values.Add(key);
+            }
+            return values.ToArray();
+        }
+
         //Start sorting service
+        [PermissionSet(SecurityAction.LinkDemand, Name="FullTrust")]
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
             System.ServiceProcess.ServiceController serviceController = new System.ServiceProcess.ServiceController("FileSorterService");
             //args go here, I have to make these arguments
-            serviceController.Start();
+            var args = GetArgs();
+            var serviceArr = ConvertArgsToServiceStringArray(args);
+            serviceController.Start(serviceArr);
         }
 
         private void TextBox_Clicked(object sender, System.Windows.Input.MouseButtonEventArgs e)
